@@ -1,0 +1,109 @@
+type: collection.insomnia.rest/5.0
+name: CN Collection - Java Specialist Integration
+meta:
+  id: wrk_bbc188745b9044acb7a9eb0442c3d4e9
+  created: 1751746800850
+  modified: 1751746800850
+  description: ""
+collection:
+  - url: "{{ _.LOCALHOST }}api/users/register"
+    name: 01. register
+    meta:
+      id: req_408deb82e2a047819aac0081cb795aae
+      created: 1751746866848
+      modified: 1751765103729
+      isPrivate: false
+      description: ""
+      sortKey: -1751760079031
+    method: POST
+    body:
+      mimeType: application/json
+      text: |-
+        {
+          "name": "Camilo Ñustes",
+          "email": "camilo@examp7.com",
+          "password": "pass1234",
+          "phones": [
+            {
+              "number": "1234567",
+              "citycode": "1",
+              "contrycode": "57"
+            }
+          ]
+        }
+    parameters:
+      - id: pair_b9bd6346431042c7979640ae06e7875b
+        name: pair_f3b5071bb1904fd6894bbb21a0f7573e
+        value: ""
+        description: ""
+        disabled: true
+      - id: pair_f3b5071bb1904fd6894bbb21a0f7573e
+        name: ""
+        value: ""
+        description: ""
+        disabled: true
+    headers:
+      - name: Content-Type
+        value: application/json
+      - name: User-Agent
+        value: insomnia/11.2.0
+    authentication:
+      type: bearer
+    scripts:
+      preRequest: "\n"
+      afterResponse: ""
+    settings:
+      renderRequestBody: true
+      encodeUrl: true
+      followRedirects: global
+      cookies:
+        send: true
+        store: true
+      rebuildPath: true
+  - url: "{{ _.LOCALHOST }}api/secure/test"
+    name: 02. TOKEN Test
+    meta:
+      id: req_aff04b4be2b843d3b2ae1b04e2f7ec62
+      created: 1751760078931
+      modified: 1751765091165
+      isPrivate: false
+      description: ""
+      sortKey: -1751760078931
+    method: GET
+    headers:
+      - name: User-Agent
+        value: insomnia/11.2.0
+        id: pair_30cb48d41a0e4eb49654d0831247b653
+      - id: pair_37b150169ccb478687f5c942adf332d5
+        name: Authorization
+        value: Bearer
+          eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJjYW1pbG9AZXhhbXNwNy5jb20iLCJpYXQiOjE3NTE3NjUwNjgsImV4cCI6MTc1MTc2ODY2OH0.92Qtrk2g9bHmuqh8eBJE1rmbP8gp2mZPnjCXA3FKDkk
+        description: ""
+        disabled: false
+    authentication:
+      type: none
+    settings:
+      renderRequestBody: true
+      encodeUrl: true
+      followRedirects: global
+      cookies:
+        send: true
+        store: true
+      rebuildPath: true
+cookieJar:
+  name: Default Jar
+  meta:
+    id: jar_e055628ac4c34ba2ad3d7d29b580efbbfe0105a7
+    created: 1751746800855
+    modified: 1751765104647
+environments:
+  name: Base Environment
+  meta:
+    id: env_e055628ac4c34ba2ad3d7d29b580efbbfe0105a7
+    created: 1751746800853
+    modified: 1751765104649
+    isPrivate: false
+  data:
+    LOCALHOST: http://localhost:8080/
+    Cloud/OPENSHIFT: http://localhost:8080/
+    token: "{{ jwt_token }}"
