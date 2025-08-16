@@ -1,0 +1,210 @@
+{
+	"info": {
+		"_postman_id": "e3392d11-be12-4ded-a31e-b48e92d22a82",
+		"name": "API de Registro de Usuarios (Proyecto CNustes)",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "1307147"
+	},
+	"item": [
+		{
+			"name": "1. Registrar Usuario (Caso Exitoso)",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"// Prueba que la respuesta fue exitosa (201 Created)",
+							"pm.test(\"Status code is 201\", function () {",
+							"    pm.response.to.have.status(201);",
+							"});",
+							"",
+							"// Extrae el token de la respuesta y lo guarda en una variable de la colección",
+							"var jsonData = pm.response.json();",
+							"if (jsonData.token) {",
+							"    pm.collectionVariables.set(\"jwt_token\", jsonData.token);",
+							"    console.log(\"Token guardado en la variable 'jwt_token'.\");",
+							"}"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"name\": \"Camilo Ñustes\",\n  \"email\": \"camilo@example.com\",\n  \"password\": \"validpass123\",\n  \"phones\": [\n    {\n      \"number\": \"1234567\",\n      \"citycode\": \"1\",\n      \"contrycode\": \"57\"\n    }\n  ]\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{LOCALHOST}}/api/users/register",
+					"host": [
+						"{{LOCALHOST}}"
+					],
+					"path": [
+						"api",
+						"users",
+						"register"
+					]
+				},
+				"description": "Registra un nuevo usuario con datos válidos. Si la operación es exitosa, el script de prueba guardará automáticamente el token JWT en una variable para ser usado en otras peticiones."
+			},
+			"response": []
+		},
+		{
+			"name": "2. Error - Correo Duplicado",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"name\": \"Camilo Ñustes\",\n  \"email\": \"camilo@example.com\",\n  \"password\": \"validpass123\",\n  \"phones\": [\n    {\n      \"number\": \"1234567\",\n      \"citycode\": \"1\",\n      \"contrycode\": \"57\"\n    }\n  ]\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{LOCALHOST}}/api/users/register",
+					"host": [
+						"{{LOCALHOST}}"
+					],
+					"path": [
+						"api",
+						"users",
+						"register"
+					]
+				},
+				"description": "Intenta registrar un usuario con un correo que ya existe (ejecuta esta petición después del caso exitoso). Deberías recibir un error `409 Conflict`."
+			},
+			"response": []
+		},
+		{
+			"name": "3. Error - Contraseña Inválida",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"name\": \"Usuario Test\",\n  \"email\": \"test@validation.com\",\n  \"password\": \"short\",\n  \"phones\": []\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{LOCALHOST}}/api/users/register",
+					"host": [
+						"{{LOCALHOST}}"
+					],
+					"path": [
+						"api",
+						"users",
+						"register"
+					]
+				},
+				"description": "Intenta registrar un usuario con una contraseña que no cumple la expresión regular (la contraseña `short` no tiene 8 caracteres ni un número). Deberías recibir un error `400 Bad Request`."
+			},
+			"response": []
+		},
+		{
+			"name": "4. Acceso a Ruta Protegida (Exitoso)",
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{jwt_token}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{LOCALHOST}}/api/users/secure/test",
+					"host": [
+						"{{LOCALHOST}}"
+					],
+					"path": [
+						"api",
+						"users",
+						"secure",
+						"test"
+					]
+				},
+				"description": "Intenta acceder a un endpoint protegido usando el token JWT obtenido en el registro exitoso. La autorización de tipo 'Bearer Token' ya está configurada para usar la variable `{{jwt_token}}`. Deberías recibir un `200 OK`."
+			},
+			"response": []
+		},
+		{
+			"name": "5. Error - Acceso a Ruta Protegida Sin Token",
+			"request": {
+				"auth": {
+					"type": "noauth"
+				},
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{LOCALHOST}}/api/secure/test",
+					"host": [
+						"{{LOCALHOST}}"
+					],
+					"path": [
+						"api",
+						"secure",
+						"test"
+					]
+				},
+				"description": "Intenta acceder al endpoint protegido sin enviar un token de autorización. Deberías recibir un error `401 Unauthorized` o `403 Forbidden`."
+			},
+			"response": []
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"packages": {},
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"packages": {},
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "jwt_token",
+			"value": ""
+		},
+		{
+			"key": "LOCALHOST",
+			"value": "http://localhost:8080",
+			"type": "string",
+			"description": {
+				"content": "",
+				"type": "text/plain"
+			}
+		}
+	]
+}

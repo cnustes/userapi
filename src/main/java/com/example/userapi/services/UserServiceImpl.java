@@ -1,9 +1,9 @@
 package com.example.userapi.services;
 
-import com.example.userapi.dtos.PhoneDTO;
 import com.example.userapi.dtos.PhoneResponseDTO;
 import com.example.userapi.dtos.UserRequestDTO;
 import com.example.userapi.dtos.UserResponseDTO;
+import com.example.userapi.exceptions.UserAlreadyExistsException;
 import com.example.userapi.kafka.KafkaProducerService;
 import com.example.userapi.models.Phone;
 import com.example.userapi.models.User;
@@ -12,9 +12,9 @@ import com.example.userapi.security.JwtUtil;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -23,41 +23,37 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
+@RequiredArgsConstructor
+@Slf4j
 public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
     private final JwtUtil jwtUtil;
     private final KafkaProducerService kafkaProducerService;
-
-    @Autowired
-    private ObjectMapper objectMapper;
-
-    private static final Logger logger = LoggerFactory.getLogger(UserServiceImpl.class);
-
-    public UserServiceImpl(UserRepository userRepository, JwtUtil jwtUtil,
-                           KafkaProducerService kafkaProducerService, ObjectMapper objectMapper) {
-        this.userRepository = userRepository;
-        this.jwtUtil = jwtUtil;
-        this.kafkaProducerService = kafkaProducerService;
-        this.objectMapper = objectMapper;
-    }
+    private final ObjectMapper objectMapper;
+    private final PasswordEncoder passwordEncoder;
 
     @Override
     public UserResponseDTO registerUser(UserRequestDTO request) {
-        if (userRepository.findByEmail(request.getEmail()).isPresent()) {
-            throw new RuntimeException("El correo ya registrado");
+        log.info("▶️  Iniciando proceso de registro para el correo: {}", request.getEmail());
+
+       if (userRepository.findByEmail(request.getEmail()).isPresent()) {
+            log.warn("⚠️  Intento de registro con correo duplicado: {}", request.getEmail());
+            throw new UserAlreadyExistsException(request.getEmail());
         }
 
         User user = new User();
         user.setId(UUID.randomUUID());
         user.setName(request.getName());
         user.setEmail(request.getEmail());
-        user.setPassword(request.getPassword());
-        user.setCreated(LocalDateTime.now());
-        user.setModified(LocalDateTime.now());
-        user.setLastLogin(LocalDateTime.now());
+        user.setPassword(passwordEncoder.encode(request.getPassword()));
+
+        LocalDateTime now = LocalDateTime.now();
+        user.setCreated(now);
+        user.setModified(now);
+        user.setLastLogin(now);
         user.setToken(jwtUtil.generateToken(user.getEmail()));
-        user.setIsActive(true);
+        user.setActive(true);
         user.setPhones(
                 request.getPhones().stream().map(p -> {
                     Phone phone = new Phone();
@@ -68,13 +64,18 @@ public class UserServiceImpl implements UserService {
                     return phone;
                 }).collect(Collectors.toList())
         );
-        try {
-            String json = objectMapper.writeValueAsString(user);
-            kafkaProducerService.sendUserCreated(json);
-        } catch (JsonProcessingException e) {
-            logger.error("Error serializando usuario: {}", e.getMessage(), e);
-        }
+
         User savedUser = userRepository.save(user);
+        log.info("✅  Usuario guardado exitosamente en la BD con ID: {}", savedUser.getId());
+
+        try {
+            String json = objectMapper.writeValueAsString(savedUser);
+            kafkaProducerService.sendUserCreated(json);
+            log.info("📨  Evento de creación de usuario enviado a Kafka.");
+        } catch (JsonProcessingException e) {
+            log.error("❌  Error serializando el usuario para enviarlo a Kafka: {}", e.getMessage(), e);
+        }
+
         return mapToResponse(savedUser);
     }
 
@@ -84,10 +85,11 @@ public class UserServiceImpl implements UserService {
         dto.setName(user.getName());
         dto.setEmail(user.getEmail());
         dto.setToken(user.getToken());
-        dto.setCreated(user.getCreated().toString());
-        dto.setModified(user.getModified().toString());
-        dto.setLastLogin(user.getLastLogin().toString());
-        dto.setActive(user.getIsActive());
+        // CAMBIO: Asignar directamente los objetos LocalDateTime
+        dto.setCreated(user.getCreated());
+        dto.setModified(user.getModified());
+        dto.setLastLogin(user.getLastLogin());
+        dto.setActive(user.isActive());
 
         List<PhoneResponseDTO> phones = user.getPhones().stream().map(phone -> {
             PhoneResponseDTO p = new PhoneResponseDTO();
