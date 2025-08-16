@@ -9,7 +9,6 @@ import com.example.userapi.models.User;
 import com.example.userapi.repositories.UserRepository;
 import com.example.userapi.security.JwtUtil;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -56,7 +55,7 @@ public class UserServiceImplTest {
         PhoneDTO phone = new PhoneDTO();
         phone.setNumber("1234567");
         phone.setCitycode("1");
-        phone.setContrycode("57");
+        phone.setCountrycode("57");
         userRequest.setPhones(Collections.singletonList(phone));
     }
 

@@ -41,7 +41,7 @@ public class UserControllerIntegrationTest {
         PhoneDTO phone = new PhoneDTO();
         phone.setNumber("12345678");
         phone.setCitycode("1");
-        phone.setContrycode("57");
+        phone.setCountrycode("57");
 
         userRequest = new UserRequestDTO();
         userRequest.setName("Integration Test User");
@@ -71,8 +71,7 @@ public class UserControllerIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(userRequest)))
                 .andExpect(status().isBadRequest())
-                // CORRECCIÓN: Esperar el mensaje de error en español.
-                .andExpect(jsonPath("$.error").value("Validación Fallida"));
+                .andExpect(jsonPath("$.mensaje").value("El formato del correo no es válido"));
     }
 
     @Test
@@ -87,7 +86,6 @@ public class UserControllerIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(userRequest)))
                 .andExpect(status().isConflict())
-                // CORRECCIÓN: Esperar el mensaje de error en español.
-                .andExpect(jsonPath("$.error").value("Conflicto"));
+                .andExpect(jsonPath("$.mensaje").value("El correo ya está registrado: " + userRequest.getEmail()));
     }
 }

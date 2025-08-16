@@ -12,6 +12,8 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
+
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -33,6 +35,12 @@ public class AuthServiceImpl implements AuthService {
         // Si la autenticación es exitosa, buscamos al usuario para generar un nuevo token
         User user = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new UsernameNotFoundException("Usuario no encontrado tras una autenticación exitosa"));
+
+        LocalDateTime now = LocalDateTime.now();
+        user.setLastLogin(now);
+        user.setModified(now); // La fecha de modificación también se actualiza en el login
+        userRepository.save(user); // Guardamos los cambios en la base de datos
+        log.info("🔄  Fechas 'lastLogin' y 'modified' actualizadas para el usuario {}", user.getEmail());
 
         String token = jwtUtil.generateToken(user.getEmail());
         log.info("✅  Autenticación exitosa. Nuevo token generado para {}", request.getEmail());

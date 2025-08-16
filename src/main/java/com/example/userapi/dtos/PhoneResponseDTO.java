@@ -6,5 +6,5 @@ import lombok.Data;
 public class PhoneResponseDTO {
     private String number;
     private String citycode;
-    private String contrycode;
+    private String countrycode;
 }

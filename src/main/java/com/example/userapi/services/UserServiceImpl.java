@@ -59,7 +59,7 @@ public class UserServiceImpl implements UserService {
                     Phone phone = new Phone();
                     phone.setNumber(p.getNumber());
                     phone.setCitycode(p.getCitycode());
-                    phone.setContrycode(p.getContrycode());
+                    phone.setCountrycode(p.getCountrycode());
                     phone.setUser(user);
                     return phone;
                 }).collect(Collectors.toList())
@@ -95,7 +95,7 @@ public class UserServiceImpl implements UserService {
             PhoneResponseDTO p = new PhoneResponseDTO();
             p.setNumber(phone.getNumber());
             p.setCitycode(phone.getCitycode());
-            p.setContrycode(phone.getContrycode());
+            p.setCountrycode(phone.getCountrycode());
             return p;
         }).toList();
 

@@ -11,6 +11,6 @@ public class PhoneDTO {
     @NotBlank(message = "{phone.citycode.notblank}")
     private String citycode;
 
-    @NotBlank(message = "{phone.contrycode.notblank}")
-    private String contrycode;
+    @NotBlank(message = "{phone.countrycode.notblank}")
+    private String countrycode;
 }
