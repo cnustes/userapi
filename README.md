@@ -1,172 +1,331 @@
-# 🧪 UserAPI
+# 🚀 User API — Spring Boot (Ejercicio BCI)
 
-API REST para el registro de usuarios con autenticación mediante JWT, almacenamiento en base de datos y envío de eventos a Kafka.
+API RESTful de **creación de usuarios** que cumple el enunciado del ejercicio “Java Especialista Integración”. El servicio acepta y retorna **solo JSON** 🧾, valida correo y contraseña por **expresiones regulares configurables** 🔐, y persiste un **token** (JWT) junto con el usuario. Incluye documentación **Swagger** 📖, colección **Postman** 🧪, y orquestación opcional con **Docker Compose** 🐳 (BD y Kafka).
 
-## 🚀 Tecnologías
-
-- Java 17
-- Spring Boot 3
-- Spring Security + JWT
-- Spring Data JPA + H2 (o PostgreSQL/MySQL)
-- Apache Kafka
-- Docker / Docker Compose
-- Swagger OpenAPI 3
+> **Stack:** ☕ Java 17 · ⚡ Spring Boot 3 · 🛠️ Maven · 🗃️ JPA/Hibernate · 🧩 H2 (default) / PostgreSQL · 🔑 JWT · 📑 Swagger/OpenAPI · 🧪 Testcontainers · 🐳 Docker Compose · 📡 Kafka (opcional)
 
 ---
 
-## 🔧 Requisitos previos
+## 📋 Tabla de contenido
 
-- Java 17+
-- Maven 3+
-- Docker y Docker Compose
-- Insomnia, Postman o similar
-
----
-
-## ⚙️ Levantar el entorno
-
-### 1. Clonar el repositorio
-
-```bash
-git clone https://github.com/cnustes/userapi.git
-cd userapi
-```
-
-### 2. Levantar infraestructura con Docker
-
-```bash
-docker-compose up -d
-```
-
-Esto levanta:
-
-- Kafka en `localhost:9092`
-- Zookeeper
-- PostgreSQL (si estás usando persistencia con DB real)
-
-> **Nota**: asegúrate que los puertos no estén ocupados.
-
-### 3. Compilar el proyecto
-
-```bash
-./mvnw clean package
-```
-
-### 4. Correr la aplicación
-
-```bash
-./mvnw spring-boot:run
-```
-
-La API quedará disponible en:  
-📍 `http://localhost:8080`
+- [🗂️ Arquitectura](#arquitectura)
+- [⚙️ Requisitos previos](#requisitos-previos)
+- [🛠️ Configuración](#configuración)
+- [▶️ Ejecutar la app](#ejecutar-la-app)
+    - [💻 Opción A: Local (H2, sin Docker)](#opción-a-local-h2-sin-docker)
+    - [🐳 Opción B: Local + Docker (PostgreSQL y Kafka)](#opción-b-local--docker-postgresql-y-kafka)
+    - [📦 Opción C: Todo en Docker](#opción-c-todo-en-docker)
+- [🔗 Endpoints](#endpoints)
+    - [📝 Registro de usuario](#registro-de-usuario)
+    - [🔐 Login de usuario](#login-de-usuario)
+    - [🔒 Endpoint protegido de ejemplo](#endpoint-protegido-de-ejemplo)
+    - [⚠️ Formato de errores](#formato-de-errores)
+- [🔑 Autenticación](#autenticación)
+- [📖 Documentación Swagger](#documentación-swagger)
+- [🧪 Colección Postman](#colección-postman)
+- [📡 Eventos Kafka (opcional)](#eventos-kafka-opcional)
+- [✅ Pruebas](#pruebas)
+- [📂 Estructura del proyecto](#estructura-del-proyecto)
+- [📝 Decisiones y notas](#decisiones-y-notas)
 
 ---
 
-## 🔐 Probar endpoints con JWT
+## 🗂️ Arquitectura
 
-### 1. Registrar un usuario
+Servicio monolítico Spring Boot con capas **controller → service → repository**, persistencia JPA y seguridad JWT. Opcionalmente emite un **evento de dominio** al registrar un usuario (Kafka).
 
-**POST** `http://localhost:8080/api/users/register`
+![Diagrama de Arquitectura de la Solución](./docs/architecture_diagram.png)
+
+---
+
+## ⚙️ Requisitos previos
+
+- ☕ **Java 17** y **Maven 3.9+**
+- 🐳 **Docker** y **Docker Compose** (si se usa la Opción B/C)
+- 🧪 (Opcional) **Postman** para importar la colección de ejemplos
+
+---
+
+## 🛠️ Configuración
+
+Crea un archivo `.env` (para Docker) o usa variables de entorno/sistema al ejecutar localmente.
+
+```properties
+# Perfil de Spring
+SPRING_PROFILES_ACTIVE=h2          # valores: h2 (default) | postgres
+SERVER_PORT=8080
+
+# JWT
+JWT_SECRET=change-me-super-secret
+JWT_TTL_MINUTES=120
+
+# BD H2 (perfil h2)
+# Sin variables adicionales; datos en memoria
+
+# BD PostgreSQL (perfil postgres)
+DB_HOST=localhost
+DB_PORT=5432
+DB_NAME=userdb
+DB_USERNAME=user
+DB_PASSWORD=pass
+
+# Kafka (opcional)
+KAFKA_BOOTSTRAP_SERVERS=localhost:9092
+USER_EVENTS_TOPIC=users.registration
+```
+
+> 💡 Si usas perfiles de Spring, también puedes pasarlos con `-Dspring-boot.run.profiles=h2|postgres` o `-Dspring.profiles.active=...`.
+
+---
+
+## ▶️ Ejecutar la app
+
+### 💻 Opción A: Local (H2, sin Docker)
+
+```bash
+mvn clean spring-boot:run -Dspring-boot.run.profiles=h2
+```
+
+La app queda en `http://localhost:8080` con BD en memoria.
+
+### 🐳 Opción B: Local + Docker (PostgreSQL y Kafka)
+
+1. Levanta infraestructura:
+   ```bash
+   docker compose up -d
+   ```
+2. Arranca la app apuntando a PostgreSQL (y Kafka si lo usas):
+   ```bash
+   mvn clean spring-boot:run -Dspring-boot.run.profiles=postgres
+   ```
+
+### 📦 Opción C: Todo en Docker
+
+```bash
+# Construir imagen
+mvn -DskipTests clean package
+docker build -t userapi:latest .
+
+# Ejecutar (variables de entorno según .env)
+docker run --env-file .env -p 8080:8080 userapi:latest
+```
+
+---
+
+## 🔗 Endpoints
+
+Base URL por defecto: `http://localhost:8080`
+
+### 📝 Registro de usuario
+
+**POST** `/api/users/register`
+
+#### Request (JSON)
 
 ```json
 {
-  "name": "Camilo",
-  "email": "camilo@example.com",
-  "password": "123456",
+  "name": "Juan Rodriguez",
+  "email": "juan@rodriguez.org",
+  "password": "Hunter2!",
   "phones": [
     {
-      "number": "123456789",
-      "cityCode": "57",
-      "countryCode": "1"
+      "number": "1234567",
+      "citycode": "1",
+      "countrycode": "57"
     }
   ]
 }
 ```
 
-🔁 Esto retornará un `token` en el JSON de respuesta:
+> ✅ Las validaciones de **email** y **password** se realizan por **expresiones regulares configurables**.
+
+#### Response — 201 Created
 
 ```json
 {
-  "id": "abc123",
-  "name": "Camilo",
-  "email": "camilo@example.com",
-  "token": "eyJhbGc..."
+  "id": "7b1a6f0e-1f0a-4a1e-9c5f-0d8f8f1a2b3c",
+  "created": "2025-08-15T12:34:56Z",
+  "modified": "2025-08-15T12:34:56Z",
+  "last_login": "2025-08-15T12:34:56Z",
+  "token": "<JWT>",
+  "isactive": true,
+  "name": "Juan Rodriguez",
+  "email": "juan@rodriguez.org",
+  "phones": [
+    { "number": "1234567", "citycode": "1", "countrycode": "57" }
+  ]
 }
 ```
 
-### 2. Acceder a endpoint protegido
+#### ⚠️ Errores frecuentes
 
-**GET** `http://localhost:8080/api/secure/test`
+- **409 Conflict** – `{"mensaje": "El correo ya registrado"}`
+- **400 Bad Request** – `{"mensaje": "Email inválido"}` / `{"mensaje": "Password inválido"}` / `{"mensaje": "Payload inválido"}`
+- **415 Unsupported Media Type** – si no envías `Content-Type: application/json`
+- **406 Not Acceptable** – si no solicitas `Accept: application/json`
 
-📥 Enviar el token en la cabecera:
+### 🔐 Login de usuario
 
-```
-Authorization: Bearer eyJhbGc...
-```
+**POST** `/api/auth/login`
 
-🔁 Respuesta:
+#### Request (JSON)
 
 ```json
-Hola camilo@example.com, tu token es válido.
+{
+  "email": "juan@rodriguez.org",
+  "password": "Hunter2!"
+}
+```
+
+#### Response — 200 OK
+
+```json
+{
+  "token": "<JWT>",
+  "last_login": "2025-08-15T12:34:56Z"
+}
+```
+
+### 🔒 Endpoint protegido de ejemplo
+
+**GET** `/api/users/secure/test`
+
+Requiere header `Authorization: Bearer <token>` usando el **token** retornado al registrarte o loguearte.
+
+#### Response — 200 OK
+
+```json
+{ "status": "ok" }
+```
+
+### ⚠️ Formato de errores
+
+Todos los **errores** retornan **solo JSON** con el siguiente esquema:
+
+```json
+{ "mensaje": "descripcion del error" }
 ```
 
 ---
 
-## 🐙 Kafka
+## 🔑 Autenticación
 
-Cada vez que un usuario se registra, se envía un evento a Kafka en el topic `user-events`.
+El servicio usa **JWT Bearer**. El **token** se **genera y persiste** junto con el usuario en el registro o login, y puede reutilizarse para invocar endpoints protegidos. Envía:
 
-Puedes monitorear usando alguna UI para Kafka como [Kafka Tool](https://www.kafkatool.com/) o `kafkacat`.
+```
+Authorization: Bearer <token>
+```
 
 ---
 
-## 📚 Documentación Swagger
+## 📖 Documentación Swagger
 
-Disponible en:
+- UI: `http://localhost:8080/swagger-ui/index.html`
+- OpenAPI JSON: `http://localhost:8080/v3/api-docs`
+
+---
+
+## 🧪 Colección Postman
+
+En el repositorio se incluye `HTTP Collection - Postman.json` dentro de `/docs/` para probar los endpoints. En Postman: **Import → File → Seleccionar archivo** y carga el JSON.
+
+---
+
+## 📡 Eventos Kafka (opcional)
+
+Al registrar un usuario se publica un evento en **Kafka** (si está habilitado). Configura el tópico con `USER_EVENTS_TOPIC` (default: `users.registration`). Ejemplo de evento:
+
+```json
+{
+  "type": "USER_REGISTERED",
+  "userId": "7b1a6f0e-1f0a-4a1e-9c5f-0d8f8f1a2b3c",
+  "email": "juan@rodriguez.org",
+  "createdAt": "2025-08-15T12:34:56Z"
+}
+```
+
+---
+
+## ✅ Pruebas
+
+- **Unitarias/integración:**
+  ```bash
+  mvn -DskipTests=false test
+  ```
+- (Opcional) **Allure**:
+  ```bash
+  # requiere CLI de Allure instalada
+  allure serve target/allure-results
+  ```
+
+---
+
+## 📂 Estructura del proyecto
 
 ```text
-http://localhost:8080/swagger-ui.html
-```
-
-o
-
-```text
-http://localhost:8080/swagger-ui/index.html
+userapi/
+├─ docs/                     # diagramas y documentación
+├─ src/
+│  ├─ main/
+│  │  ├─ java/
+│  │  │  └─ .../controller   # REST controllers
+│  │  │           /service   # lógica de negocio
+│  │  │           /repository# repositorios JPA
+│  │  │           /model     # entidades y DTOs
+│  │  │           /security  # JWT, filtros
+│  │  └─ resources/
+│  │      ├─ application.properties
+│  │      └─ db/**           # scripts si aplica
+│  └─ test/
+│     └─ java/               # tests (JUnit/Testcontainers)
+├─ Dockerfile
+├─ docker-compose.yml
+├─ pom.xml
+└─ README.md
 ```
 
 ---
 
-## 🧪 Ejecutar pruebas
+## 📝 Decisiones y notas
+
+- **Tokens y fechas:** `last_login` se actualiza tanto en el registro como en el login. `modified` coincide con `created` hasta futuras actualizaciones.
+- **Validaciones:** Las regex de **email** y **password** son **configurables** vía propiedades de la app.
+- **Id de usuario:** Se usa **UUID**.
+- **Perfiles:** `h2` para desarrollo rápido; `postgres` para entornos con Docker Compose.
+- **Compatibilidad de payload:** si ya tienes clientes previos, verifica el *case* de las propiedades dentro de `phones` y ajusta la colección Postman si fuera necesario.
+
+---
+
+### 🛠️ Snippets útiles
+
+**cURL – Registro**
 
 ```bash
-./mvnw test
+curl -i -X POST http://localhost:8080/api/users/register \
+  -H "Content-Type: application/json" -H "Accept: application/json" \
+  -d '{
+    "name": "Juan Rodriguez",
+    "email": "juan@rodriguez.org",
+    "password": "Hunter2!",
+    "phones": [{"number": "1234567", "citycode": "1", "countrycode": "57"}]
+  }'
 ```
 
----
-
-## 📁 Estructura del proyecto
+**cURL – Login**
 
 ```bash
-com.example.userapi
-├── config                 # Configuraciones de seguridad
-├── controllers            # Controladores REST
-├── dto                    # Request/Response DTOs
-├── models                 # Entidades JPA
-├── repositories           # Interfaces de acceso a datos
-├── security               # Filtro y utilidades JWT
-├── services               # Lógica de negocio
-└── kafka                  # Productor Kafka
+curl -i -X POST http://localhost:8080/api/auth/login \
+  -H "Content-Type: application/json" -H "Accept: application/json" \
+  -d '{
+    "email": "juan@rodriguez.org",
+    "password": "Hunter2!"
+  }'
 ```
 
----
+**cURL – Endpoint protegido**
 
-## 🙋‍♂️ Autor
+```bash
+curl -i http://localhost:8080/api/users/secure/test \
+  -H "Authorization: Bearer <TOKEN>" -H "Accept: application/json"
+```
 
-Camilo Ñustes – [@cnustes](https://github.com/cnustes)
-
----
-
-## 📄 Licencia
-
-MIT
