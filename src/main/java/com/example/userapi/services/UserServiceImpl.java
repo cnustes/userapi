@@ -1,5 +1,6 @@
 package com.example.userapi.services;
 
+import com.example.userapi.clients.UserEnrichmentService;
 import com.example.userapi.dtos.PhoneResponseDTO;
 import com.example.userapi.dtos.UserRequestDTO;
 import com.example.userapi.dtos.UserResponseDTO;
@@ -19,6 +20,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -32,6 +34,7 @@ public class UserServiceImpl implements UserService {
     private final KafkaProducerService kafkaProducerService;
     private final ObjectMapper objectMapper;
     private final PasswordEncoder passwordEncoder;
+    private final UserEnrichmentService enrichmentService;
 
     @Override
     public UserResponseDTO registerUser(UserRequestDTO request) {
@@ -67,6 +70,19 @@ public class UserServiceImpl implements UserService {
 
         User savedUser = userRepository.save(user);
         log.info("✅  Usuario guardado exitosamente en la BD con ID: {}", savedUser.getId());
+
+        // --- NUEVA FUNCIONALIDAD ---
+        // Llamamos al servicio de enriquecimiento DESPUÉS de guardar el usuario.
+        // Gracias al Circuit Breaker, esta llamada es segura.
+        // Si falla, el flujo no se interrumpe.
+        try {
+            Map<String, Object> enrichmentData = enrichmentService.getEnrichmentData(savedUser.getEmail());
+            log.info("ℹ️  Datos de enriquecimiento recibidos: {}", enrichmentData);
+            // Aquí podrías hacer algo con esos datos, como guardarlos o publicarlos en otro evento.
+        } catch (Exception e) {
+            // Incluso si el fallback falla, lo capturamos para no interrumpir el registro.
+            log.error("❌ Error inesperado durante la llamada al servicio de enriquecimiento: {}", e.getMessage());
+        }
 
         try {
             String json = objectMapper.writeValueAsString(savedUser);
